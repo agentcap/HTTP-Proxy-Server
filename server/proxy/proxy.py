@@ -41,7 +41,6 @@ def is_cached(host,port,path,req,conn):
         If cached if revalidate the cache and sends the response
         to the client
     """
-    print "Checking whether the request is cached or not"
 
     # Whether request matches obj present in cache
     cache_idx = -1
@@ -53,8 +52,6 @@ def is_cached(host,port,path,req,conn):
 
     if(cache_idx == -1):
         return False
-
-    print "Request is cached"
 
     # Request is in cache so validating the cached response 
     # by sending a "conditional get" request
@@ -89,7 +86,7 @@ def is_cached(host,port,path,req,conn):
 
     # Filter the above content and store in cache
     elif(data.split(' ')[1] == "200"):
-        print "Response in cache is not up to date, so updating the cache"
+        print "Response in cache is not up to date, so updating the cache and sending the response"
         obj = {}
         obj["host"] = host
         obj["port"] = port
@@ -190,12 +187,13 @@ def handle_client(conn):
             exit(0)
         cacheLock.release()
 
+        print 'Not present in cache'
         # If not in cache contacting the server and passsing
         # the request of the client
         # print('host--',host, 'port --', port)
         server_socket = socket.socket()
         server_socket.connect((host, port))
-        print "Connection established with main server"
+        print "Connection established with main server to send request"
         server_socket.send(req)
 
 
@@ -209,9 +207,8 @@ def handle_client(conn):
             data += res
         
         # Check if cachable or not
-        print 'not present in cache'
         if (cache_control(data) == 'must-revalidate'):
-            print 'caching the response'
+            print 'Caching the response'
             # Storing the host port path details in the cache object
             # Time field hold when the cached object is last accessed
             # last_mod holds the date provided by the server in the file request.
@@ -241,14 +238,18 @@ def handle_client(conn):
 
             conn.close()
         elif (cache_control(data) == 'no-cache'):
-            print 'file cannot be cached'
+            print 'File cannot be cached'
             while data:
                 conn.send(data)
                 data = server_socket.recv(1024)
+            conn.close()
+            server_socket.close()
 
     except Exception as e:
-        pass
-
+        conn.close()
+        server_socket.close()
+        
+    print 'Connection closed'
     exit(0)
 
 def cache_control(data):
@@ -274,6 +275,7 @@ def server(host,port):
 
     while True:
         conn, addr = server.accept()
+        print '------------------------------------------------'
         print 'Got connection from', addr
 
         # handle_client(conn)
