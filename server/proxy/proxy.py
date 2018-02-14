@@ -2,6 +2,8 @@ import socket
 import sys
 import time
 import datetime
+import threading
+import thread
 
 # host,port,path,last_Accessed,time
 cache = []
@@ -176,14 +178,17 @@ def handle_client(conn):
     try:
         req = conn.recv(1024)
         if not req:
-            return
+            exit(0)
 
         # Parse request
         host,port,path,req = parse_request(req)
 
         # Handle caching
+        cacheLock.acquire()
         if(is_cached(host,port,path,req,conn)):
-            return
+            cacheLock.release()
+            exit(0)
+        cacheLock.release()
 
         # If not in cache contacting the server and passsing
         # the request of the client
@@ -217,6 +222,7 @@ def handle_client(conn):
             obj["time"] = time.time()
             obj["last_mod"] = find_date(data)
 
+            cacheLock.acquire()
             # Finding the position in the cache for replacement and storing the object
             idx = cache_position()
             cache[idx] = obj
@@ -231,6 +237,7 @@ def handle_client(conn):
 
             # Once cached sending the response from the cache file via conn
             send_cache(idx,conn)
+            cacheLock.release()
 
             conn.close()
         elif (cache_control(data) == 'no-cache'):
@@ -241,6 +248,8 @@ def handle_client(conn):
 
     except Exception as e:
         pass
+
+    exit(0)
 
 def cache_control(data):
     '''
@@ -267,10 +276,12 @@ def server(host,port):
         conn, addr = server.accept()
         print 'Got connection from', addr
 
-        handle_client(conn)
+        # handle_client(conn)
+        thread.start_new_thread(handle_client, (conn, ))
 
 host = ""
 port = 60005
+cacheLock = threading.Lock() 
 
 if len(sys.argv) > 1:
     port = int(sys.argv[1])
