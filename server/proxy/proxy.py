@@ -39,8 +39,11 @@ def is_cached(host,port,path,req,conn):
         If cached if revalidate the cache and sends the response
         to the client
     """
-
+    print '$$$$$$$-----$$$$$$$'
+    print '$$$$$$$-----$$$$$$$'
     print "Checking whether the request is cached or not"
+    print '$$$$$$$-----$$$$$$$'
+    print '$$$$$$$-----$$$$$$$'
 
     # Whether request matches obj present in cache
     cache_idx = -1
@@ -51,11 +54,19 @@ def is_cached(host,port,path,req,conn):
             break
 
     if(cache_idx == -1):
+        print '$$$$$$$-----$$$$$$$'
+        print '$$$$$$$-----$$$$$$$'
         print "Request is not cached"
+        print '$$$$$$$-----$$$$$$$'
+        print '$$$$$$$-----$$$$$$$'
         return False
 
 
+    print '$$$$$$$-----$$$$$$$'
+    print '$$$$$$$-----$$$$$$$'
     print "Request is cached"
+    print '$$$$$$$-----$$$$$$$'
+    print '$$$$$$$-----$$$$$$$'
     # Request is in cache so validating the cached response 
     # by sending a "conditional get" request
     time_header = "If-Modified-Since: %s" % (cache[cache_idx]["last_mod"])
@@ -80,7 +91,11 @@ def is_cached(host,port,path,req,conn):
 
     # If file is not modified send the cached response
     if(data.split(' ')[1] == "304" ):
+        print '$$$$$$$-----$$$$$$$'
+        print '$$$$$$$-----$$$$$$$'
         print "Response in cache is up to date, Sending cached response"
+        print '$$$$$$$-----$$$$$$$'
+        print '$$$$$$$-----$$$$$$$'
         # while True:
         #     if(data):
         #         break
@@ -89,7 +104,11 @@ def is_cached(host,port,path,req,conn):
 
     # Filter the above content and store in cache
     elif(data.split(' ')[1] == "200"):
+        print '$$$$$$$-----$$$$$$$'
+        print '$$$$$$$-----$$$$$$$'
         print "Response in cache is not up to date, so updating the cache"
+        print '$$$$$$$-----$$$$$$$'
+        print '$$$$$$$-----$$$$$$$'
         obj = {}
         obj["host"] = host
         obj["port"] = port
@@ -129,19 +148,19 @@ def find_date(data):
     # if(idx == -1) Handle this later
 
     date = data[idx+len("Last-Modified: "):].split("\n")[0].strip()
-    new_date = time.strptime(date,"%a, %d %b %Y %H:%M:%S %Z")
-    dt = datetime.datetime.strptime(date,"%a, %d %b %Y %H:%M:%S %Z")
+    # new_date = time.strptime(date,"%a, %d %b %Y %H:%M:%S %Z")
+    # dt = datetime.datetime.strptime(date,"%a, %d %b %Y %H:%M:%S %Z")
 
-    temp =  dt.strftime('%a %b  %d %H:%M:%S') + ' GMT ' + dt.strftime('%Y')
+    # temp =  dt.strftime('%a %b  %d %H:%M:%S') + ' GMT ' + dt.strftime('%Y')
 
-    print "$$$$$$$$$$$$$$$$$"
-    print "$$$$$$$$$$$$$$$$$"
-    print "$$$$$$$$$$$$$$$$$"
-    print "response date is ", temp
-    print "$$$$$$$$$$$$$$$$$"
-    print "$$$$$$$$$$$$$$$$$"
-    print "$$$$$$$$$$$$$$$$$"
-    return temp
+    # print "$$$$$$$$$$$$$$$$$"
+    # print "$$$$$$$$$$$$$$$$$"
+    # print "$$$$$$$$$$$$$$$$$"
+    # print "response date is ", temp
+    # print "$$$$$$$$$$$$$$$$$"
+    # print "$$$$$$$$$$$$$$$$$"
+    # print "$$$$$$$$$$$$$$$$$"
+    return date
 
 def cache_position():
     """
@@ -201,7 +220,11 @@ def handle_client(conn):
     # the request of the client
     server_socket = socket.socket()
     server_socket.connect((host, port))
+    print '$$$$$$$-----$$$$$$$'
+    print '$$$$$$$-----$$$$$$$'
     print "Connection established with main server"
+    print '$$$$$$$-----$$$$$$$'
+    print '$$$$$$$-----$$$$$$$'
     server_socket.send(req)
 
 
