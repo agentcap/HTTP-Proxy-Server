@@ -13,6 +13,9 @@ class HTTPCacheRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             if os.path.isfile(filename):
                 a = time.strptime(time.ctime(os.path.getmtime(filename)), "%a %b %d %H:%M:%S %Y")
                 b = time.strptime(self.headers.get('If-Modified-Since', None), "%a %b  %d %H:%M:%S %Z %Y")
+                print "self.headers.get('If-Modified-Since', None) :",self.headers.get('If-Modified-Since', None)
+                print "File time is :",a
+                print "Requ time is :",b
                 if a < b:
                     self.send_response(304)
                     self.end_headers()

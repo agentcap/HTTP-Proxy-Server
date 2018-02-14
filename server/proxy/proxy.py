@@ -32,9 +32,17 @@ def parse_request(request):
     return [servername,port,path,request]
 
 def is_cached(host,port,path,req,conn):
+    """
+        This function checks whether the request from the
+        client is already cached or not.
 
-    print "Enterd is_cached function"
-    # Whether requeste matches obj present in cache
+        If cached if revalidate the cache and sends the response
+        to the client
+    """
+
+    print "Checking whether the request is cached or not"
+
+    # Whether request matches obj present in cache
     cache_idx = -1
     for i in range(len(cache)):
         obj = cache[i]
@@ -43,11 +51,13 @@ def is_cached(host,port,path,req,conn):
             break
 
     if(cache_idx == -1):
-        print "Not present in cache"
+        print "Request is not cached"
         return False
 
 
-    # If in cache conditional get
+    print "Request is cached"
+    # Request is in cache so validating the cached response 
+    # by sending a "conditional get" request
     time_header = "If-Modified-Since: %s" % (cache[cache_idx]["last_mod"])
     cond_req = req.split('\n')
     cond_req.insert(1,time_header)
@@ -58,32 +68,28 @@ def is_cached(host,port,path,req,conn):
     server_socket.connect((host, port))
     server_socket.send(cond_req)
 
-    time.sleep(1)
-    data = server_socket.recv(1024)
-    time.sleep(1)
 
-    print "$$$$$$$$$$$$$$$$$$$$$$$$$"
-    print "$$$$$$$$$$$$$$$$$$$$$$$$$"
-    print "$$$$$$$$$$$$$$$$$$$$$$$$$"
-    print "$$$$$$$$$$$$$$$$$$$$$$$$$"
-    print data
-    print "$$$$$$$$$$$$$$$$$$$$$$$$$"
-    print "$$$$$$$$$$$$$$$$$$$$$$$$$"
-    print "$$$$$$$$$$$$$$$$$$$$$$$$$"
-    print "$$$$$$$$$$$$$$$$$$$$$$$$$"
+    # Read the response from the server untill all the 
+    # headers are reached
+    data = ''
+    while (data.find("\n\n") == -1):
+        res = server_socket.recv(1024)
+        if(not res):
+            break
+        data += res
 
-    # If file is not modified send the cached values and update queue order
+    # If file is not modified send the cached response
     if(data.split(' ')[1] == "304" ):
-        print "Cache up to date"
-        while True:
-            if(data):
-                break
-            data = server_socket.recv(1024)
+        print "Response in cache is up to date, Sending cached response"
+        # while True:
+        #     if(data):
+        #         break
+        #     data = server_socket.recv(1024)
         send_cache(cache_idx,conn)
 
     # Filter the above content and store in cache
     elif(data.split(' ')[1] == "200"):
-        print "Modified cache page"
+        print "Response in cache is not up to date, so updating the cache"
         obj = {}
         obj["host"] = host
         obj["port"] = port
@@ -91,79 +97,88 @@ def is_cached(host,port,path,req,conn):
         obj["time"] = time.time()
         obj["last_mod"] = find_date(data)
 
-        idx = cache_position()
+        # Updating the new response in the old response idx
+        idx = cache_idx
         cache[idx] = obj
         with open(str(idx), 'wb') as file:
-            while True:
-                if(not data):
-                    file.close()
-                    break
-                file.write(data)
-                
+            while data:
+                file.write(data)                
                 data = server_socket.recv(1024)
         file.close()
         send_cache(idx,conn)
 
     # Handling other response messages like 404,....
     else:
-        while True:
-            if(data):
-                break
+        while data:
             conn.send(data)
             data = server_socket.recv(1024)
 
     server_socket.close()
     return True
 
+# if(idx != -1) Handle this later
 def find_date(data):
+    """
+        Takes the header response and returns the 
+        correct date format required by the server 
+        in the conditional get
+    """
     idx = data.find("Last-Modified:")
-    # if(idx != -1) Handle this later
+    if (idx == -1):
+        return "-1"
+    # if(idx == -1) Handle this later
 
-    date = data[idx+len("Last-Modified: "):].split("\n")[0]
+    date = data[idx+len("Last-Modified: "):].split("\n")[0].strip()
+    new_date = time.strptime(date,"%a, %d %b %Y %H:%M:%S %Z")
+    dt = datetime.datetime.strptime(date,"%a, %d %b %Y %H:%M:%S %Z")
 
-    print "!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    print "!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    print "!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    print "!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    print "!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    print "Date is ", date
-    print "idx is ", idx
-    print "!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    print "!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    print "!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    print "!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    # new_date = time.strptime(date,"%a, %d %b %Y %H:%M:%S %Z")
-    # print new_date
-    # date = date.strip
-    # dt = datetime.datetime.strptime(date, '%a, %d %b %Y %H:%M:%S %Z')
-    # return dt.strftime('%a %b %d %H:%M:%S') + ' GMT ' + dt.strftime('%Y')
-    return "Tue Feb 13 18:53:59 GMT 2018"
+    temp =  dt.strftime('%a %b  %d %H:%M:%S') + ' GMT ' + dt.strftime('%Y')
 
+    print "$$$$$$$$$$$$$$$$$"
+    print "$$$$$$$$$$$$$$$$$"
+    print "$$$$$$$$$$$$$$$$$"
+    print "response date is ", temp
+    print "$$$$$$$$$$$$$$$$$"
+    print "$$$$$$$$$$$$$$$$$"
+    print "$$$$$$$$$$$$$$$$$"
+    return temp
 
 def cache_position():
+    """
+        Returns the cache index which is last accessed
+        and can be replaced with new information.
+    """
+
+    # If the cache is empty
     if(len(cache) < 3):
         cache.append({})
         return len(cache)-1
 
-    min_time = cache[0]["time"]
+    # Finding the last accessed cache and returning the index
     idx = 0
+    min_time = cache[0]["time"]
     for i in range(len(cache)):
         if(min_time > cache[i]["time"]):
             idx = i
 
     return idx
 
-
+# Change the headers
 def send_cache(idx,conn):
-    file = open(str(idx),'r')
+    """
+        Send cache takes the cache idx to read the file and send
+        the requested file with modified Date filed in the response.
+    """
+    
+    # Updating the last accessed time for the cache
     cache[idx]["time"] = time.time()
+    
+    file = open(str(idx),'r')
     data = file.read(1024)
-    while True:
-        if(not data):
-            file.close()
-            break
+    while data:
         conn.send(data)
         data = file.read(1024)
+    file.close()
 
 
 def handle_client(conn):
@@ -192,10 +207,16 @@ def handle_client(conn):
 
     # Read the response from the server untill all the 
     # headers are reached
-    time.sleep(1)
-    data = server_socket.recv(1024)
-    time.sleep(1)
-
+    data = ''
+    while (data.find("\n\n") == -1):
+        res = server_socket.recv(1024)
+        if(not res):
+            break
+        data += res
+    
+    # Storing the host port path details in the cache object
+    # Time field hold when the cached object is last accessed
+    # last_mod holds the date provided by the server in the file request.
     obj = {}
     obj["host"] = host
     obj["port"] = port
@@ -203,20 +224,21 @@ def handle_client(conn):
     obj["time"] = time.time()
     obj["last_mod"] = find_date(data)
 
+    # Finding the position in the cache for replacement and storing the object
     idx = cache_position()
     cache[idx] = obj
+
+    # Writing the response from the main server to the disk
     with open(str(idx), 'wb') as file:
-        while True:
-            if(not data):
-                file.close()
-                break
-            file.write(data)
-            
+        while data:
+            file.write(data)            
             data = server_socket.recv(1024)
     file.close()
+    server_socket.close()
+
+    # Once cached sending the response from the cache file via conn
     send_cache(idx,conn)
 
-    server_socket.close()
     conn.close()
 
 def server(host,port):
