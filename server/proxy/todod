@@ -1,0 +1,5 @@
+cache control
+threading
+send response with modified date
+remove sleep with read complete headers
+error handling
